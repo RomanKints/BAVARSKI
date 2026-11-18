@@ -1,5 +1,5 @@
 
-name: BAVARSKI - Настоящая сборка iPhone
+name: BAVARSKI - Сборка приложения iPhone
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ jobs:
           ZIP_FILE=$(find . -type f -iname '*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ОШИБКА: архив не найден"
+            echo "Архив не найден"
             exit 1
           fi
 
@@ -27,45 +27,96 @@ jobs:
           MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
 
           if [ -z "$MANIFEST" ]; then
-            echo "ОШИБКА: Package.swift не найден"
+            echo "Package.swift не найден"
             exit 1
           fi
 
-          echo "PROJECT_DIR=$(dirname "$MANIFEST")" >> "$GITHUB_ENV"
-          echo "Найден проект: $(dirname "$MANIFEST")"
+          PROJECT_DIR=$(dirname "$MANIFEST")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Проверить Xcode
-        run: |
-          xcodebuild -version
-          swift --version
-
-      - name: Проверить доступные SDK
-        run: |
-          xcodebuild -showsdks
-          xcrun simctl list devices available
-
-      - name: Проверить поддержку Swift Package
+      - name: Проверить исходники
         run: |
           cd "$PROJECT_DIR"
-          swift package dump-package
 
-      - name: Попытаться собрать приложение
+          for FILE in \
+            "MyApp.swift" \
+            "contentView.swift" \
+            "ImportView.swift" \
+            "CreateOrderView.swift" \
+            "IncomingView.swift" \
+            "CatalogView .swift" \
+            "Assets.xcassets"
+          do
+            if [ ! -e "$FILE" ]; then
+              echo "Не найден файл: $FILE"
+              exit 1
+            fi
+          done
+
+          echo "Все необходимые файлы найдены"
+
+      - name: Установить XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Создать проект Xcode
         run: |
           cd "$PROJECT_DIR"
+
+          cat > project.yml <<'EOF'
+          name: BAVARSKI
+
+          options:
+            deploymentTarget:
+              iOS: "26.0"
+
+          targets:
+            BAVARSKI:
+              type: application
+              platform: iOS
+
+              sources:
+                - path: MyApp.swift
+                - path: contentView.swift
+                - path: ImportView.swift
+                - path: CreateOrderView.swift
+                - path: IncomingView.swift
+                - path: CatalogView .swift
+
+              resources:
+                - path: Assets.xcassets
+
+              settings:
+                base:
+                  PRODUCT_BUNDLE_IDENTIFIER: com.bavarski.warehouse
+                  PRODUCT_NAME: BAVARSKI
+                  SWIFT_VERSION: "5.0"
+                  TARGETED_DEVICE_FAMILY: "1,2"
+                  GENERATE_INFOPLIST_FILE: YES
+                  CODE_SIGNING_ALLOWED: NO
+          EOF
+
+          xcodegen generate
+
+      - name: Собрать приложение для iPhone Simulator
+        run: |
+          cd "$PROJECT_DIR"
+
           xcodebuild \
-            -scheme AppModule \
+            -project BAVARSKI.xcodeproj \
+            -scheme BAVARSKI \
             -sdk iphonesimulator \
             -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/BAVARSKI-Build" \
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Показать результат сборки
-        if: always()
-        run: |
-          if [ -d "$RUNNER_TEMP/BAVARSKI-Build/Build/Products" ]; then
-            find "$RUNNER_TEMP/BAVARSKI-Build/Build/Products" -maxdepth 3 -type d
-          else
-            echo "Папка результатов сборки не создана"
-          fi
-
+      - name: Сохранить собранное приложение
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BAVARSKI-iPhone-App
+          path: ${{ runner.temp }}/BAVARSKI-Build/Build/Products/Debug-iphonesimulator/BAVARSKI.app
+          if-no-files-found: error
