@@ -1,5 +1,5 @@
 
-name: BAVARSKI - Проверка проекта
+name: BAVARSKI - Проверка исходников
 
 on:
   workflow_dispatch:
@@ -32,8 +32,7 @@ jobs:
           MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
 
           if [ -z "$MANIFEST" ]; then
-            echo "Настоящий Package.swift не найден"
-            find project -maxdepth 5 -type f | head -100
+            echo "Package.swift не найден"
             exit 1
           fi
 
@@ -41,25 +40,21 @@ jobs:
 
           echo "НАЙДЕН ПРОЕКТ: $PROJECT_DIR"
           echo "========== PACKAGE.SWIFT =========="
-          sed -n '1,240p' "$MANIFEST"
+          cat "$MANIFEST"
 
-          echo "========== ФАЙЛЫ SWIFT =========="
-          find "$PROJECT_DIR" -maxdepth 2 -type f -name '*.swift' ! -name '._*'
-
-      - name: Показать главный код приложения
+      - name: Найти все Swift-файлы
         run: |
-          PROJECT_DIR=$(dirname "$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)")
+          MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
+          PROJECT_DIR=$(dirname "$MANIFEST")
 
-          echo "========== MyApp.swift =========="
-          if [ -f "$PROJECT_DIR/MyApp.swift" ]; then
-            cat "$PROJECT_DIR/MyApp.swift"
-          else
-            echo "MyApp.swift не найден"
-          fi
+          echo "========== ВСЕ SWIFT-ФАЙЛЫ =========="
+          find "$PROJECT_DIR" -type f -iname '*.swift' ! -name '._*' -print
 
-          echo "========== contentView.swift =========="
-          if [ -f "$PROJECT_DIR/contentView.swift" ]; then
-            cat "$PROJECT_DIR/contentView.swift"
-          else
-            echo "contentView.swift не найден"
-          fi
+          echo "========== СОДЕРЖИМОЕ ПАПКИ ПРОЕКТА =========="
+          find "$PROJECT_DIR" -maxdepth 3 -type f -print
+
+          echo "========== ГЛАВНЫЙ ЭКРАН =========="
+          find "$PROJECT_DIR" -type f -iname '*content*view*.swift' ! -name '._*' -exec sh -c '
+            echo "ФАЙЛ: $1"
+            cat "$1"
+          ' _ {} \;
