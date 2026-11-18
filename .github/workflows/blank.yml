@@ -1,51 +1,49 @@
 
-name: BAVARSKI - Проверка всех экранов
+name: BAVARSKI - Сборка iPhone
 
 on:
   workflow_dispatch:
 
 jobs:
-  inspect:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: macos-26
 
     steps:
       - name: Скачать репозиторий
         uses: actions/checkout@v4
 
-      - name: Найти и распаковать проект
+      - name: Найти архив проекта
         run: |
           ZIP_FILE=$(find . -type f -iname '*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ZIP-архив не найден"
+            echo "Архив проекта не найден"
             exit 1
           fi
 
           echo "Найден архив: $ZIP_FILE"
-          unzip -t "$ZIP_FILE"
-
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
 
-      - name: Показать исходники всех экранов
+      - name: Найти Package.swift
+        run: |
+          MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
+
+          if [ -z "$MANIFEST" ]; then
+            echo "Package.swift не найден"
+            exit 1
+          fi
+
+          echo "Найден проект:"
+          dirname "$MANIFEST"
+
+      - name: Проверить Xcode
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Проверить структуру проекта
         run: |
           PROJECT_DIR=$(dirname "$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)")
-
-          echo "========== IMPORTVIEW.SWIFT =========="
-          cat "$PROJECT_DIR/ImportView.swift"
-
-          echo "========== CREATEORDERVIEW.SWIFT =========="
-          cat "$PROJECT_DIR/CreateOrderView.swift"
-
-          echo "========== INCOMINGVIEW.SWIFT =========="
-          cat "$PROJECT_DIR/IncomingView.swift"
-
-          echo "========== CATALOGVIEW.SWIFT =========="
-          CATALOG=$(find "$PROJECT_DIR" -maxdepth 1 -type f -iname 'CatalogView*.swift' ! -name '._*' -print -quit)
-
-          if [ -n "$CATALOG" ]; then
-            echo "Найден файл: $CATALOG"
-            cat "$CATALOG"
-          else
-            echo "CatalogView.swift не найден"
-          fi
+          echo "Файлы проекта:"
+          find "$PROJECT_DIR" -maxdepth 2 -type f
