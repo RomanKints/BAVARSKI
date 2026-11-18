@@ -1,34 +1,12 @@
 
-name: BAVARSKI - Проверка проекта
+name: BAVARSKI - Тест исполнителя
 
 on:
   workflow_dispatch:
 
 jobs:
-  inspect:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Получить файлы
-        uses: actions/checkout@v4
-
-      - name: Проверить наличие архива
-        run: |
-          echo "Проверяем архив Склад.zip"
-          ls -lh
-          test -f "Склад.zip"
-
-      - name: Проверить содержимое архива
-        run: |
-          echo "Содержимое архива:"
-          unzip -l "Склад.zip"
-
-      - name: Распаковать проект
-        run: |
-          mkdir project
-          unzip -q "Склад.zip" -d project
-
-      - name: Показать структуру проекта
-        run: |
-          echo "Файлы проекта:"
-          find project -maxdepth 5 -type f
+      - name: Проверка
+        run: echo "GitHub Actions работает!"
