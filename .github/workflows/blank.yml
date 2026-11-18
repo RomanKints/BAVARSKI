@@ -1,3 +1,4 @@
+
 name: BAVARSKI - Проверка проекта
 
 on:
@@ -11,21 +12,39 @@ jobs:
       - name: Получить файлы
         uses: actions/checkout@v4
 
-      - name: Проверить архив
+      - name: Найти архив
         run: |
-          echo "Проверяем Склад.zip"
-          ls -lh
-          test -f "Склад.zip"
+          echo "Текущая папка:"
+          pwd
+          echo "Файлы в репозитории:"
+          ls -lah
+          echo "Поиск ZIP-архивов:"
+          find . -type f -iname "*.zip"
 
-      - name: Проверить содержимое
+      - name: Проверить наличие архива
         run: |
-          unzip -l "Склад.zip"
+          ARCHIVE=$(find . -type f -iname "Склад.zip" -print -quit)
+          if [ -z "$ARCHIVE" ]; then
+            echo "ОШИБКА: Архив Склад.zip не найден"
+            exit 1
+          fi
+          echo "Архив найден: $ARCHIVE"
+          ls -lh "$ARCHIVE"
+
+      - name: Проверить содержимое архива
+        run: |
+          ARCHIVE=$(find . -type f -iname "Склад.zip" -print -quit)
+          echo "Содержимое архива:"
+          unzip -l "$ARCHIVE"
 
       - name: Распаковать проект
         run: |
+          ARCHIVE=$(find . -type f -iname "Склад.zip" -print -quit)
           mkdir project
-          unzip -q "Склад.zip" -d project
+          unzip -q "$ARCHIVE" -d project
+          echo "Архив успешно распакован"
 
-      - name: Показать файлы проекта
+      - name: Показать структуру проекта
         run: |
-          find project -maxdepth 5 -type f
+          echo "Файлы проекта:"
+          find project -maxdepth 6 -type f
