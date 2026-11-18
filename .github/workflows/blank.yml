@@ -14,37 +14,26 @@ jobs:
 
       - name: Найти архив
         run: |
-          echo "Текущая папка:"
-          pwd
-          echo "Файлы в репозитории:"
-          ls -lah
-          echo "Поиск ZIP-архивов:"
+          echo "Ищем ZIP-файлы:"
           find . -type f -iname "*.zip"
 
-      - name: Проверить наличие архива
+      - name: Проверить архив
         run: |
-          ARCHIVE=$(find . -type f -iname "Склад.zip" -print -quit)
+          ARCHIVE=$(find . -type f -iname "*.zip" -print -quit)
           if [ -z "$ARCHIVE" ]; then
-            echo "ОШИБКА: Архив Склад.zip не найден"
+            echo "Архив не найден"
             exit 1
           fi
-          echo "Архив найден: $ARCHIVE"
-          ls -lh "$ARCHIVE"
-
-      - name: Проверить содержимое архива
-        run: |
-          ARCHIVE=$(find . -type f -iname "Склад.zip" -print -quit)
-          echo "Содержимое архива:"
-          unzip -l "$ARCHIVE"
+          echo "Найден архив: $ARCHIVE"
+          unzip -t "$ARCHIVE"
 
       - name: Распаковать проект
         run: |
-          ARCHIVE=$(find . -type f -iname "Склад.zip" -print -quit)
+          ARCHIVE=$(find . -type f -iname "*.zip" -print -quit)
           mkdir project
           unzip -q "$ARCHIVE" -d project
-          echo "Архив успешно распакован"
+          echo "Проект распакован успешно"
 
-      - name: Показать структуру проекта
+      - name: Показать файлы проекта
         run: |
-          echo "Файлы проекта:"
           find project -maxdepth 6 -type f
