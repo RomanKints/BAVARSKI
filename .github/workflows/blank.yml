@@ -1,5 +1,5 @@
 
-name: BAVARSKI - Проверка исходников
+name: BAVARSKI - Проверка всех экранов
 
 on:
   workflow_dispatch:
@@ -27,34 +27,25 @@ jobs:
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
 
-      - name: Найти проект и показать Package.swift
+      - name: Показать исходники всех экранов
         run: |
-          MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
+          PROJECT_DIR=$(dirname "$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)")
 
-          if [ -z "$MANIFEST" ]; then
-            echo "Package.swift не найден"
-            exit 1
+          echo "========== IMPORTVIEW.SWIFT =========="
+          cat "$PROJECT_DIR/ImportView.swift"
+
+          echo "========== CREATEORDERVIEW.SWIFT =========="
+          cat "$PROJECT_DIR/CreateOrderView.swift"
+
+          echo "========== INCOMINGVIEW.SWIFT =========="
+          cat "$PROJECT_DIR/IncomingView.swift"
+
+          echo "========== CATALOGVIEW.SWIFT =========="
+          CATALOG=$(find "$PROJECT_DIR" -maxdepth 1 -type f -iname 'CatalogView*.swift' ! -name '._*' -print -quit)
+
+          if [ -n "$CATALOG" ]; then
+            echo "Найден файл: $CATALOG"
+            cat "$CATALOG"
+          else
+            echo "CatalogView.swift не найден"
           fi
-
-          PROJECT_DIR=$(dirname "$MANIFEST")
-
-          echo "НАЙДЕН ПРОЕКТ: $PROJECT_DIR"
-          echo "========== PACKAGE.SWIFT =========="
-          cat "$MANIFEST"
-
-      - name: Найти все Swift-файлы
-        run: |
-          MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
-          PROJECT_DIR=$(dirname "$MANIFEST")
-
-          echo "========== ВСЕ SWIFT-ФАЙЛЫ =========="
-          find "$PROJECT_DIR" -type f -iname '*.swift' ! -name '._*' -print
-
-          echo "========== СОДЕРЖИМОЕ ПАПКИ ПРОЕКТА =========="
-          find "$PROJECT_DIR" -maxdepth 3 -type f -print
-
-          echo "========== ГЛАВНЫЙ ЭКРАН =========="
-          find "$PROJECT_DIR" -type f -iname '*content*view*.swift' ! -name '._*' -exec sh -c '
-            echo "ФАЙЛ: $1"
-            cat "$1"
-          ' _ {} \;
