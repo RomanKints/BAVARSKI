@@ -1,5 +1,5 @@
 
-name: BAVARSKI - Сборка iPhone
+name: BAVARSKI - Настоящая сборка iPhone
 
 on:
   workflow_dispatch:
@@ -12,38 +12,60 @@ jobs:
       - name: Скачать репозиторий
         uses: actions/checkout@v4
 
-      - name: Найти архив проекта
+      - name: Найти и распаковать проект
         run: |
           ZIP_FILE=$(find . -type f -iname '*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "Архив проекта не найден"
+            echo "ОШИБКА: архив не найден"
             exit 1
           fi
 
-          echo "Найден архив: $ZIP_FILE"
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
 
-      - name: Найти Package.swift
-        run: |
           MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
 
           if [ -z "$MANIFEST" ]; then
-            echo "Package.swift не найден"
+            echo "ОШИБКА: Package.swift не найден"
             exit 1
           fi
 
-          echo "Найден проект:"
-          dirname "$MANIFEST"
+          echo "PROJECT_DIR=$(dirname "$MANIFEST")" >> "$GITHUB_ENV"
+          echo "Найден проект: $(dirname "$MANIFEST")"
 
       - name: Проверить Xcode
         run: |
           xcodebuild -version
           swift --version
 
-      - name: Проверить структуру проекта
+      - name: Проверить доступные SDK
         run: |
-          PROJECT_DIR=$(dirname "$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)")
-          echo "Файлы проекта:"
-          find "$PROJECT_DIR" -maxdepth 2 -type f
+          xcodebuild -showsdks
+          xcrun simctl list devices available
+
+      - name: Проверить поддержку Swift Package
+        run: |
+          cd "$PROJECT_DIR"
+          swift package dump-package
+
+      - name: Попытаться собрать приложение
+        run: |
+          cd "$PROJECT_DIR"
+          xcodebuild \
+            -scheme AppModule \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath "$RUNNER_TEMP/BAVARSKI-Build" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Показать результат сборки
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/BAVARSKI-Build/Build/Products" ]; then
+            find "$RUNNER_TEMP/BAVARSKI-Build/Build/Products" -maxdepth 3 -type d
+          else
+            echo "Папка результатов сборки не создана"
+          fi
+
