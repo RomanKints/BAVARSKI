@@ -23,22 +23,43 @@ jobs:
 
           echo "Найден архив: $ZIP_FILE"
           unzip -t "$ZIP_FILE"
+
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
 
-      - name: Показать Package.swift
+      - name: Найти проект и показать Package.swift
         run: |
           MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
 
           if [ -z "$MANIFEST" ]; then
             echo "Настоящий Package.swift не найден"
-            echo "Содержимое архива:"
             find project -maxdepth 5 -type f | head -100
             exit 1
           fi
 
-          echo "НАЙДЕН МАНИФЕСТ: $MANIFEST"
+          PROJECT_DIR=$(dirname "$MANIFEST")
+
+          echo "НАЙДЕН ПРОЕКТ: $PROJECT_DIR"
           echo "========== PACKAGE.SWIFT =========="
           sed -n '1,240p' "$MANIFEST"
+
           echo "========== ФАЙЛЫ SWIFT =========="
-          find project -type f -name '*.swift' ! -path '*/__MACOSX/*' ! -name '._*' | head -100
+          find "$PROJECT_DIR" -maxdepth 2 -type f -name '*.swift' ! -name '._*'
+
+      - name: Показать главный код приложения
+        run: |
+          PROJECT_DIR=$(dirname "$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)")
+
+          echo "========== MyApp.swift =========="
+          if [ -f "$PROJECT_DIR/MyApp.swift" ]; then
+            cat "$PROJECT_DIR/MyApp.swift"
+          else
+            echo "MyApp.swift не найден"
+          fi
+
+          echo "========== contentView.swift =========="
+          if [ -f "$PROJECT_DIR/contentView.swift" ]; then
+            cat "$PROJECT_DIR/contentView.swift"
+          else
+            echo "contentView.swift не найден"
+          fi
