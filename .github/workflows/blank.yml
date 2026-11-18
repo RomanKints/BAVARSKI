@@ -9,31 +9,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Получить файлы
+      - name: Скачать репозиторий
         uses: actions/checkout@v4
 
-      - name: Найти архив
+      - name: Найти и распаковать проект
         run: |
-          echo "Ищем ZIP-файлы:"
-          find . -type f -iname "*.zip"
+          ZIP_FILE=$(find . -type f -iname '*.zip' -print -quit)
 
-      - name: Проверить архив
-        run: |
-          ARCHIVE=$(find . -type f -iname "*.zip" -print -quit)
-          if [ -z "$ARCHIVE" ]; then
-            echo "Архив не найден"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ZIP-архив не найден"
             exit 1
           fi
-          echo "Найден архив: $ARCHIVE"
-          unzip -t "$ARCHIVE"
 
-      - name: Распаковать проект
-        run: |
-          ARCHIVE=$(find . -type f -iname "*.zip" -print -quit)
-          mkdir project
-          unzip -q "$ARCHIVE" -d project
-          echo "Проект распакован успешно"
+          echo "Найден архив: $ZIP_FILE"
+          unzip -t "$ZIP_FILE"
+          mkdir -p project
+          unzip -q "$ZIP_FILE" -d project
 
-      - name: Показать файлы проекта
+      - name: Показать Package.swift
         run: |
-          find project -maxdepth 6 -type f
+          MANIFEST=$(find project -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
+
+          if [ -z "$MANIFEST" ]; then
+            echo "Настоящий Package.swift не найден"
+            echo "Содержимое архива:"
+            find project -maxdepth 5 -type f | head -100
+            exit 1
+          fi
+
+          echo "НАЙДЕН МАНИФЕСТ: $MANIFEST"
+          echo "========== PACKAGE.SWIFT =========="
+          sed -n '1,240p' "$MANIFEST"
+          echo "========== ФАЙЛЫ SWIFT =========="
+          find project -type f -name '*.swift' ! -path '*/__MACOSX/*' ! -name '._*' | head -100
