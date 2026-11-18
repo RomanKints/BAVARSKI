@@ -1,0 +1,52 @@
+name: BAVARSKI - Выгрузка исходников
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачать репозиторий
+        uses: actions/checkout@v4
+
+      - name: Распаковать исходный проект
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Архив проекта не найден"
+            exit 1
+          fi
+
+          mkdir -p extracted
+          unzip -q "$ZIP_FILE" -d extracted
+
+          MANIFEST=$(find extracted -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
+          if [ -z "$MANIFEST" ]; then
+            echo "Package.swift не найден внутри архива"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$MANIFEST")
+          mkdir -p source-export
+          cp -R "$PROJECT_DIR" source-export/BAVARSKI
+
+          find source-export -name '.DS_Store' -type f -delete
+          find source-export -name '._*' -type f -delete
+          find source-export -type d -name '__MACOSX' -prune -exec rm -rf {} +
+
+          zip -qr BAVARSKI-Sources.zip source-export/BAVARSKI
+
+      - name: Сохранить исходники как временный артефакт
+        uses: actions/upload-artifact@v4
+        with:
+          name: BAVARSKI-Sources
+          path: BAVARSKI-Sources.zip
+          if-no-files-found: error
+          retention-days: 7
