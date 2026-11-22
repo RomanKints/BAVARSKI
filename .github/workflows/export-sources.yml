@@ -1,3 +1,4 @@
+
 name: BAVARSKI - Выгрузка исходников
 
 on:
@@ -9,6 +10,7 @@ permissions:
 jobs:
   export:
     runs-on: ubuntu-latest
+
     steps:
       - name: Скачать репозиторий
         uses: actions/checkout@v4
@@ -18,30 +20,32 @@ jobs:
         run: |
           set -euo pipefail
 
-          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "Архив проекта не найден"
+          ZIP_FILE="./BAVARSKI-PWA.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "Архив BAVARSKI-PWA.zip не найден"
+            echo "ZIP-файлы в корне:"
+            find . -maxdepth 1 -type f -iname '*.zip' -print
             exit 1
           fi
 
-          mkdir -p extracted
-          unzip -q "$ZIP_FILE" -d extracted
+          mkdir -p source-export/BAVARSKI-PWA
 
-          MANIFEST=$(find extracted -type f -name Package.swift ! -path '*/__MACOSX/*' ! -name '._*' -print -quit)
-          if [ -z "$MANIFEST" ]; then
-            echo "Package.swift не найден внутри архива"
-            exit 1
-          fi
-
-          PROJECT_DIR=$(dirname "$MANIFEST")
-          mkdir -p source-export
-          cp -R "$PROJECT_DIR" source-export/BAVARSKI
+          unzip -q "$ZIP_FILE" -d source-export/BAVARSKI-PWA
 
           find source-export -name '.DS_Store' -type f -delete
           find source-export -name '._*' -type f -delete
           find source-export -type d -name '__MACOSX' -prune -exec rm -rf {} +
 
-          zip -qr BAVARSKI-Sources.zip source-export/BAVARSKI
+          if [ -z "$(find source-export -type f -print -quit)" ]; then
+            echo "Архив распакован, но внутри нет файлов"
+            exit 1
+          fi
+
+          echo "Содержимое архива:"
+          find source-export -maxdepth 5 -type f -print | head -200
+
+          zip -qr BAVARSKI-Sources.zip source-export/BAVARSKI-PWA
 
       - name: Сохранить исходники как временный артефакт
         uses: actions/upload-artifact@v4
